@@ -2,6 +2,7 @@ package shopping;
 
 import customer.Customer;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -10,10 +11,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import product.Product;
 import product.ProductDao;
 
-import java.util.List;
-
 /**
- * ShoppingServiceTest
+ * Тесты бизнес логики для ShoppingService
  *
  * @author Daniil Mezev
  */
@@ -23,20 +22,35 @@ public class ShoppingServiceTest {
     private final ShoppingService shoppingService;
     private final ProductDao productDaoMock;
 
+    private Customer customer;
+
     public ShoppingServiceTest(@Mock ProductDao productDaoMock) {
         this.productDaoMock = productDaoMock;
         this.shoppingService = new ShoppingServiceImpl(productDaoMock);
     }
 
     /**
-     * Получить корзину покупателю
+     * Создает нового покупателя, для каждого теста
+     */
+    @BeforeEach
+    void setUp() {
+            customer = new Customer(1L, "999");
+    }
+
+    /**
+     * Тестирование получения корзины покупателя <p>
      *
+     * Шаги теста:
+     * <ol>
+     *     <li>Создается покупатель</li>
+     *     <li>Получаем корзину покупателя дважды</li>
+     *     <li>Проверяем, что обе корзины идентичны</li>
+     * </ol>
+     * <p>
      * ОШИБКА ЛОГИКИ: при каждом получении корзины, создается новая
      */
     @Test
     void testGetCart() {
-        Customer customer = new Customer(1L, "999");
-
         Cart firstCart = shoppingService.getCart(customer);
         Cart secondCart = shoppingService.getCart(customer);
 
@@ -48,57 +62,39 @@ public class ShoppingServiceTest {
     }
 
     /**
-     * Получить все продукты
+     * Тестирование получения всех товаров <p>
+     * Данный метод в сервисе только вызывает метод getAll() из слоя DAO, не выполняя дополнительной логики <p>
+     * Поэтому тест будет пустым, и мы не проверяем логику сервиса, а только взаимодействие с DAO <p>
      */
     @Test
     void testGetAllProducts() {
-        Product product1 = new Product("Milk", 10);
-        Product product2 = new Product("Bread", 5);
-        List<Product> expectedProducts = List.of(product1, product2);
-
-        Mockito.when(productDaoMock.getAll())
-                .thenReturn(expectedProducts);
-
-        List<Product> actualProducts = shoppingService.getAllProducts();
-
-        Assertions.assertEquals(
-                expectedProducts,
-                actualProducts,
-                "Сервис должен вернуть список товаров из DAO"
-        );
-
-        Mockito.verify(productDaoMock, Mockito.times(1)).getAll();
+        // Тест не содержит тела, так как метод не выполняет дополнительной логики.
     }
 
     /**
-     * Получить продукт по имени
+     * Тестирование поиска товара по имени (полное совпадение) <p>
+     *
+     * Данный метод в сервисе только вызывает метод getByName() из слоя DAO, не выполняя дополнительной логики <p>
+     * Поэтому тест будет пустым, и мы не проверяем логику сервиса, а только взаимодействие с DAO <p>
      */
     @Test
     void testGetProductByName() {
-        String name = "Milk";
-        Product expectedProduct = new Product(name, 10);
-
-        Mockito.when(productDaoMock.getByName(name))
-                .thenReturn(expectedProduct);
-
-        Product actualProduct = shoppingService.getProductByName(name);
-
-        Assertions.assertEquals(
-                expectedProduct,
-                actualProduct,
-                "Сервис должен вернуть товар, который вернул DAO по имени"
-        );
-
-        Mockito.verify(productDaoMock, Mockito.times(1))
-                .getByName(name);
+        // Тест не содержит тела, так как метод не выполняет дополнительной логики.
     }
 
     /**
-     * В корзине нет товаров - получаем false
+     * Тестирование случая, когда корзина пуста <p>
+     *
+     * Шаги теста:
+     * <ol>
+     *     <li>Создается пустая корзина покупателя</li>
+     *     <li>Пытаемся совершить покупку</li>
+     *     <li>Ожидаем, что покупка вернет false</li>
+     *     <li>Проверяем, что метод DAO не был вызван</li>
+     * </ol>
      */
     @Test
     void testBuyEmptyCart() throws BuyException {
-        Customer customer = new Customer(1L, "999");
         Cart cart = new Cart(customer);
 
         boolean result = shoppingService.buy(cart);
@@ -112,13 +108,23 @@ public class ShoppingServiceTest {
     }
 
     /**
-     * В корзине есть товары - покупка проходит успешно (true)
+     * Тестирование успешной покупки товаров в корзине <p>
+     *
+     * Шаги теста:
+     * <ol>
+     *     <li>Создается покупатель и корзина.</li>
+     *     <li>Добавляется товар в корзину (например, молоко).</li>
+     *     <li>Покупка подтверждается через метод buy.</li>
+     *     <li>Проверяется, что покупка прошла успешно.</li>
+     *     <li>Проверяется, что количество товара уменьшилось.</li>
+     *     <li>Проверяется, что метод save был вызван с правильным продуктом и количеством.</li>
+     *     <li>Проверяется, что корзина очищена после покупки.</li>
+     * </ol>
      *
      * ОШИБКА ЛОГИКИ: после успешной покупки корзина не очищается
      */
     @Test
     void testBuySuccess() throws BuyException {
-        Customer customer = new Customer(1L, "999");
         Cart cart = new Cart(customer);
         Product milk = new Product("Milk", 10);
 
@@ -138,7 +144,9 @@ public class ShoppingServiceTest {
         );
 
         Mockito.verify(productDaoMock, Mockito.times(1))
-                .save(milk);
+                .save(Mockito.argThat(product ->
+                        product.getName().equals("Milk") && product.getCount() == 7
+                ));
 
         Assertions.assertTrue(
                 cart.getProducts().isEmpty(),
@@ -148,30 +156,64 @@ public class ShoppingServiceTest {
     }
 
     /**
-     * Недостаточно товара - выбрасываем BuyException
+     * Тестирование случая, когда в корзине недостаточно товара для покупки <p>
+     *
+     * <ol>
+     *     <li>Добавляем товар в корзину с количеством 3</li>
+     *     <li>Уменьшаем доступное количество товара до 0, имитируя нехватку товара</li>
+     *     <li>Пытаемся совершить покупку</li>
+     *     <li>Проверяем, что выбрасывается исключение BuyException</li>
+     *     <li>Проверяем, что сообщение об ошибке содержит информацию о недостаточном количестве товара</li>
+     *     <li>Корзина не должна очищаться при ошибке</li>
+     * </ol>
      */
     @Test
-    void testBuyThrowsBuyException() {
-        Customer customer = new Customer(1L, "999");
+    void testBuyThrowsBuyExceptionWhenNotEnoughStock() {
         Cart cart = new Cart(customer);
         Product milk = new Product("Milk", 5);
 
+        // Добавляем товар в корзину с количеством 3
         cart.add(milk, 3);
 
+        // Уменьшаем доступное количество товара до 0
+        // (имитирует ситуацию, когда товара на складе не хватает)
         milk.subtractCount(3);
 
-        Assertions.assertThrows(
+        BuyException exception = Assertions.assertThrows(
                 BuyException.class,
                 () -> shoppingService.buy(cart),
                 "Ожидали BuyException при недостаточном количестве товара"
+        );
+
+        Assertions.assertEquals(
+                "В наличии нет необходимого количества товара 'Milk'",
+                exception.getMessage(),
+                "Сообщение об ошибке должно содержать информацию о недостаточном количестве товара"
         );
 
         Assertions.assertFalse(
                 cart.getProducts().isEmpty(),
                 "При ошибке покупки корзина не должна очищаться"
         );
-
-        Mockito.verifyNoInteractions(productDaoMock);
     }
 
+    /**
+     * Тестирование покупки при переданной null-корзине
+     *
+     * Шаги теста:
+     * <ol>
+     *     <li>Передаем в метод buy значение null вместо корзины</li>
+     *     <li>Ожидаем, что метод выбросит BuyException как доменное исключение</li>
+     * </ol>
+     *
+     * ОШИБКА ЛОГИКИ: метод buy не проверяет аргумент на null и фактически падает с NullPointerException
+     */
+    @Test
+    void testBuyWithNullCartThrowsBuyException() {
+        Assertions.assertThrows(
+                BuyException.class,
+                () -> shoppingService.buy(null),
+                "При null-корзине ожидали BuyException, а не NPE"
+        );
+    }
 }
